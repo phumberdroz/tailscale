@@ -122,6 +122,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveMetrics(w, r)
 	case "/localapi/v0/debug":
 		h.serveDebug(w, r)
+	case "/localapi/v0/shorten-expiry":
+		h.serveShortenExpiry(w, r)
 	case "/":
 		io.WriteString(w, "tailscaled\n")
 	default:
@@ -509,6 +511,35 @@ func (h *Handler) serveDERPMap(w http.ResponseWriter, r *http.Request) {
 	e := json.NewEncoder(w)
 	e.SetIndent("", "\t")
 	e.Encode(h.b.DERPMap())
+}
+
+// serveShortenExpiry sets the expiry date on the current machine to the
+// specified unix timestamp
+func (h *Handler) serveShortenExpiry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "POST required", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var expiryTime time.Time
+	if v := r.FormValue("expiry"); v != "" {
+		expiryInt, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			http.Error(w, "can't parse expiry time, expects a unix timestamp", http.StatusBadRequest)
+			return
+		}
+		expiryTime = time.Unix(expiryInt, 0)
+	} else {
+		http.Error(w, "missing 'expiry' parameter, a unix timestamp", http.StatusBadRequest)
+		return
+	}
+	err := h.b.ShortenExpiry(r.Context(), expiryTime)
+	if err != nil {
+		http.Error(w, err.Error(), 400)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain")
+	io.WriteString(w, "done\n")
 }
 
 func defBool(a string, def bool) bool {

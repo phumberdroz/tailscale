@@ -3187,6 +3187,11 @@ func (b *LocalBackend) allowExitNodeDNSProxyToServeName(name string) bool {
 	return true
 }
 
+// SetExpiry can shorten the expiry time of the current node but cannot extend
+func (b *LocalBackend) ShortenExpiry(ctx context.Context, expiry time.Time) error {
+	return b.cc.ShortenExpiry(ctx, expiry)
+}
+
 // exitNodeCanProxyDNS reports the DoH base URL ("http://foo/dns-query") without query parameters
 // to exitNodeID's DoH service, if available.
 //

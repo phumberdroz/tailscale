@@ -302,12 +302,22 @@ func (c *Direct) doLoginOrRegen(ctx context.Context, opt loginOpt) (newURL strin
 	return url, err
 }
 
+func (c *Direct) ShortenExpiry(ctx context.Context, expiry time.Time) error {
+	c.logf("[v1] direct.ShortenExpiry()")
+
+	newURL, err := c.doLoginOrRegen(ctx, loginOpt{Expiry: &expiry})
+	c.logf("[v1] ShortenExpiry control response: newURL=%v, err=%v", newURL, err)
+
+	return err
+}
+
 type loginOpt struct {
 	Token  *tailcfg.Oauth2Token
 	Flags  LoginFlags
 	Regen  bool
 	URL    string
 	Logout bool
+	Expiry *time.Time
 }
 
 // httpClient provides a common interface for the noiseClient and
@@ -406,6 +416,8 @@ func (c *Direct) doLogin(ctx context.Context, opt loginOpt) (mustRegen bool, new
 	}
 	if opt.Logout {
 		request.Expiry = time.Unix(123, 0) // far in the past
+	} else if opt.Expiry != nil {
+		request.Expiry = *opt.Expiry
 	}
 	c.logf("RegisterReq: onode=%v node=%v fup=%v",
 		request.OldNodeKey.ShortString(),
